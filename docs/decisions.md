@@ -16,3 +16,6 @@ Choices the spec leaves open, one dated line each.
 - 2026-10-16: VTT blocks are separated by empty lines only, so the whitespace-only lines of YouTube auto tracks stay inside their cue (and are then dropped as empty); a block is a cue when its first or second line holds `-->`.
 - 2026-10-16: inline tags are removed with one pattern, `<[^>]*>`; bracketed annotations with `\[[^\]]*\]`.
 - 2026-10-16: a cue whose lines are all dropped (empty or duplicates) is not a kept cue for the paragraph gap; the gap is compared in whole milliseconds so that float rounding cannot turn 2.0 s into 1.999… s.
+- 2026-10-16: SponsorBlock lives in `yt_digest_node/sponsorblock.py`: `fetch_segments(video_id, base_url, request_id=None) -> SponsorBlockResult` (segments as `(start, end)` pairs, `state` `ok`/`none`/`error`) using `urllib.request` (no new dependency), and `sponsor_ratio(segments, duration)`; turning `error` into a null `sponsor_ratio` is left to the pipeline.
+- 2026-10-16: a 200 whose body is not a JSON array of items with `segment: [start, end]` counts as `error` (logged with status 200 and 0 segments); `sponsorblock.call` is logged at `info` for `ok` and `none`, `warn` for `error`.
+- 2026-10-16: `sponsor_ratio` is 0 when the duration is 0 or less; Python's `round(x, 3)` does the rounding.
