@@ -1,12 +1,10 @@
 import json
 import socket
-import threading
 import urllib.parse
-from collections.abc import Iterator
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
 import pytest
+from conftest import SponsorBlockServer
 
 from yt_digest_node.sponsorblock import (
     SponsorBlockState,
@@ -15,40 +13,6 @@ from yt_digest_node.sponsorblock import (
 )
 
 VIDEO_ID = "dQw4w9WgXcQ"
-
-
-class _Server:
-    """A local SponsorBlock stand-in answering every request with a fixed status and body."""
-
-    def __init__(self) -> None:
-        self.status = 200
-        self.body = b"[]"
-        self.paths: list[str] = []
-        server = self
-
-        class Handler(BaseHTTPRequestHandler):
-            def do_GET(self) -> None:
-                server.paths.append(self.path)
-                self.send_response(server.status)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(server.body)
-
-            def log_message(self, format: str, *args: Any) -> None:
-                pass
-
-        self.httpd = HTTPServer(("127.0.0.1", 0), Handler)
-        self.url = f"http://127.0.0.1:{self.httpd.server_address[1]}"
-
-
-@pytest.fixture
-def server() -> Iterator[_Server]:
-    stand_in = _Server()
-    thread = threading.Thread(target=stand_in.httpd.serve_forever, daemon=True)
-    thread.start()
-    yield stand_in
-    stand_in.httpd.shutdown()
-    stand_in.httpd.server_close()
 
 
 def log_line(capsys: pytest.CaptureFixture[str]) -> dict[str, Any]:
@@ -61,7 +25,9 @@ def log_line(capsys: pytest.CaptureFixture[str]) -> dict[str, Any]:
     return line
 
 
-def test_200_returns_the_segments(server: _Server, capsys: pytest.CaptureFixture[str]) -> None:
+def test_200_returns_the_segments(
+    server: SponsorBlockServer, capsys: pytest.CaptureFixture[str]
+) -> None:
     server.body = json.dumps(
         [
             {"segment": [10.5, 20], "category": "sponsor", "UUID": "a"},
@@ -77,7 +43,7 @@ def test_200_returns_the_segments(server: _Server, capsys: pytest.CaptureFixture
     assert line["attrs"] == {"status": 200, "segments": 2}
 
 
-def test_request_names_the_video_and_the_three_categories(server: _Server) -> None:
+def test_request_names_the_video_and_the_three_categories(server: SponsorBlockServer) -> None:
     fetch_segments(VIDEO_ID, server.url + "/")
     path, _, query = server.paths[0].partition("?")
     assert path == "/api/skipSegments"
@@ -88,7 +54,9 @@ def test_request_names_the_video_and_the_three_categories(server: _Server) -> No
     assert "%5B%22sponsor%22" in query
 
 
-def test_404_means_no_segments(server: _Server, capsys: pytest.CaptureFixture[str]) -> None:
+def test_404_means_no_segments(
+    server: SponsorBlockServer, capsys: pytest.CaptureFixture[str]
+) -> None:
     server.status = 404
     server.body = b"Not Found"
     result = fetch_segments(VIDEO_ID, server.url)
@@ -99,7 +67,7 @@ def test_404_means_no_segments(server: _Server, capsys: pytest.CaptureFixture[st
     assert line["attrs"] == {"status": 404, "segments": 0}
 
 
-def test_500_is_an_error(server: _Server, capsys: pytest.CaptureFixture[str]) -> None:
+def test_500_is_an_error(server: SponsorBlockServer, capsys: pytest.CaptureFixture[str]) -> None:
     server.status = 500
     result = fetch_segments(VIDEO_ID, server.url)
     assert result.state is SponsorBlockState.error
@@ -109,7 +77,9 @@ def test_500_is_an_error(server: _Server, capsys: pytest.CaptureFixture[str]) ->
     assert line["attrs"] == {"status": 500, "segments": 0}
 
 
-def test_malformed_200_is_an_error(server: _Server, capsys: pytest.CaptureFixture[str]) -> None:
+def test_malformed_200_is_an_error(
+    server: SponsorBlockServer, capsys: pytest.CaptureFixture[str]
+) -> None:
     server.body = b'{"segment": [1, 2]}'
     result = fetch_segments(VIDEO_ID, server.url)
     assert result.state is SponsorBlockState.error
