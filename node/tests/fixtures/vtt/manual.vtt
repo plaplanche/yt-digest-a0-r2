@@ -1,0 +1,32 @@
+WEBVTT
+Kind: captions
+Language: fr
+
+NOTE
+Ce bloc est un commentaire.
+
+STYLE
+::cue { color: yellow; }
+
+REGION
+id:bas
+width:40%
+
+1
+00:00:01.000 --> 00:00:03.000 align:start position:10%
+Bonjour à tous,
+
+2
+00:00:03.500 --> 00:00:05.000
+<v Marie>bienvenue dans <i>cette</i> vidéo.</v>
+
+3
+00:00:07.000 --> 00:00:09.000
+Un écart de deux secondes
+
+00:00:10.900 --> 00:00:12.000 line:90%
+ne coupe pas
+le paragraphe à 1,9 s.
+
+00:01:00.000 --> 00:01:02.500
+<b>Fin</b>.
